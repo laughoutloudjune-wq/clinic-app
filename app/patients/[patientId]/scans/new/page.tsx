@@ -50,6 +50,23 @@ function parseOptionalDateTime(value: FormDataEntryValue | null): string | undef
   return date.toISOString();
 }
 
+function parseOptionalEnum<T extends string>(formData: FormData, key: keyof ScanInsert, allowed: readonly T[]): T | null {
+  const raw = getValue(formData, key);
+  if (!raw) return null;
+  if (!allowed.includes(raw as T)) {
+    throw new Error(`Invalid value for ${String(key)}.`);
+  }
+  return raw as T;
+}
+
+function parseOptionalBoolean(formData: FormData, key: keyof ScanInsert): boolean | null {
+  const raw = getValue(formData, key);
+  if (!raw) return null;
+  if (raw === "true") return true;
+  if (raw === "false") return false;
+  throw new Error(`Invalid boolean value for ${String(key)}.`);
+}
+
 export default async function NewScanPage({ params }: PageProps) {
   const { patientId } = await params;
   if (!uuidPattern.test(patientId)) {
@@ -102,6 +119,18 @@ export default async function NewScanPage({ params }: PageProps) {
       total_body_water_l: parseOptionalNumber(formData, "total_body_water_l"),
       protein_kg: parseOptionalNumber(formData, "protein_kg"),
       minerals_kg: parseOptionalNumber(formData, "minerals_kg"),
+      waist_circumference_cm: parseOptionalNumber(formData, "waist_circumference_cm"),
+      hip_circumference_cm: parseOptionalNumber(formData, "hip_circumference_cm"),
+      daily_activity_limitation: parseOptionalEnum(formData, "daily_activity_limitation", [
+        "None",
+        "Mild",
+        "Moderate",
+        "Severe",
+      ] as const),
+      breathlessness_symptom: parseOptionalBoolean(formData, "breathlessness_symptom"),
+      joint_pain_mobility_limitation: parseOptionalBoolean(formData, "joint_pain_mobility_limitation"),
+      organ_dysfunction_signs: parseOptionalBoolean(formData, "organ_dysfunction_signs"),
+      obesity_related_dysfunction: parseOptionalBoolean(formData, "obesity_related_dysfunction"),
     };
 
     const { error } = await supabaseClient.from("scans").insert(payload);

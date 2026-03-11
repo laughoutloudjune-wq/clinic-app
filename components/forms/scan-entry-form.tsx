@@ -4,7 +4,12 @@ import { useState, useTransition } from "react";
 
 import type { Patient } from "@/types/database";
 
-type InputType = "number" | "datetime-local";
+type InputType = "number" | "datetime-local" | "select";
+
+interface SelectOption {
+  value: string;
+  label: string;
+}
 
 interface FieldConfig {
   id: string;
@@ -13,6 +18,7 @@ interface FieldConfig {
   step?: string;
   required?: boolean;
   min?: number;
+  options?: SelectOption[];
 }
 
 interface FieldSection {
@@ -147,6 +153,65 @@ const sections: FieldSection[] = [
     ],
   },
   {
+    title: "Clinical Screening (No Lab)",
+    description: "Quick clinic observations used for obesity screening context.",
+    fields: [
+      { id: "waist_circumference_cm", label: "Waist Circumference (cm)", step: "0.1", min: 0 },
+      { id: "hip_circumference_cm", label: "Hip Circumference (cm)", step: "0.1", min: 0 },
+      {
+        id: "daily_activity_limitation",
+        label: "Daily Activity Limitation",
+        type: "select",
+        options: [
+          { value: "None", label: "None" },
+          { value: "Mild", label: "Mild" },
+          { value: "Moderate", label: "Moderate" },
+          { value: "Severe", label: "Severe" },
+        ],
+      },
+      {
+        id: "breathlessness_symptom",
+        label: "Breathlessness Symptom",
+        type: "select",
+        options: [
+          { value: "", label: "Not Assessed" },
+          { value: "false", label: "No" },
+          { value: "true", label: "Yes" },
+        ],
+      },
+      {
+        id: "joint_pain_mobility_limitation",
+        label: "Joint Pain / Mobility Limitation",
+        type: "select",
+        options: [
+          { value: "", label: "Not Assessed" },
+          { value: "false", label: "No" },
+          { value: "true", label: "Yes" },
+        ],
+      },
+      {
+        id: "organ_dysfunction_signs",
+        label: "Organ Dysfunction Signs",
+        type: "select",
+        options: [
+          { value: "", label: "Not Assessed" },
+          { value: "false", label: "No" },
+          { value: "true", label: "Yes" },
+        ],
+      },
+      {
+        id: "obesity_related_dysfunction",
+        label: "Dysfunction Obesity-Related",
+        type: "select",
+        options: [
+          { value: "", label: "Not Assessed" },
+          { value: "false", label: "No" },
+          { value: "true", label: "Yes" },
+        ],
+      },
+    ],
+  },
+  {
     title: "Optional Clinical Metrics",
     description: "These values can be left blank.",
     fields: [
@@ -157,7 +222,39 @@ const sections: FieldSection[] = [
   },
 ];
 
-function MetricInput({ field }: { field: FieldConfig }) {
+interface MetricInputFieldProps {
+  field: FieldConfig;
+  value?: string;
+  onChange?: (value: string) => void;
+  readOnly?: boolean;
+  helperText?: string;
+}
+
+function MetricInputField({ field, value, onChange, readOnly = false, helperText }: MetricInputFieldProps) {
+  if (field.type === "select" && field.options) {
+    return (
+      <div className="space-y-2">
+        <label htmlFor={field.id} className="block text-sm font-medium text-slate-700">
+          {field.label}
+        </label>
+        <select
+          id={field.id}
+          name={field.id}
+          required={field.required ?? false}
+          className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none ring-slate-300 transition focus:ring-2"
+          defaultValue={field.options[0]?.value ?? ""}
+        >
+          {field.options.map((option) => (
+            <option key={`${field.id}-${option.value}`} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+        {helperText ? <p className="text-xs text-slate-500">{helperText}</p> : null}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-2">
       <label htmlFor={field.id} className="block text-sm font-medium text-slate-700">
@@ -170,8 +267,12 @@ function MetricInput({ field }: { field: FieldConfig }) {
         required={field.required ?? false}
         step={field.step}
         min={field.min}
+        value={value}
+        onChange={onChange ? (event) => onChange(event.currentTarget.value) : undefined}
+        readOnly={readOnly}
         className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none ring-slate-300 transition focus:ring-2"
       />
+      {helperText ? <p className="text-xs text-slate-500">{helperText}</p> : null}
     </div>
   );
 }
@@ -179,6 +280,15 @@ function MetricInput({ field }: { field: FieldConfig }) {
 export default function ScanEntryForm({ patientId, patient, onSubmitAction }: ScanEntryFormProps) {
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [weightKg, setWeightKg] = useState("");
+
+  const heightM = patient.height_cm > 0 ? patient.height_cm / 100 : 0;
+  const canAutoCalculateBmi = heightM > 0;
+  const parsedWeight = Number.parseFloat(weightKg);
+  const bmiValue =
+    canAutoCalculateBmi && Number.isFinite(parsedWeight) && parsedWeight > 0
+      ? (parsedWeight / (heightM * heightM)).toFixed(2)
+      : "";
 
   const submitHandler = (formData: FormData) => {
     setError(null);
@@ -193,9 +303,19 @@ export default function ScanEntryForm({ patientId, patient, onSubmitAction }: Sc
     });
   };
 
+  const getSectionGridClass = (sectionTitle: string) => {
+    if (sectionTitle === "Overall Metrics") {
+      return "grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3";
+    }
+    if (sectionTitle === "Clinical Screening (No Lab)") {
+      return "grid grid-cols-1 gap-5 md:grid-cols-2";
+    }
+    return "grid grid-cols-1 gap-5 md:grid-cols-2";
+  };
+
   return (
-    <form action={submitHandler} className="mx-auto max-w-5xl space-y-6 p-4 md:p-8">
-      <div className="rounded-lg border border-slate-200 bg-white p-6">
+    <form action={submitHandler} className="mx-auto max-w-6xl space-y-7 p-4 md:p-8">
+      <div className="rounded-xl border border-slate-200 bg-white p-7">
         <h1 className="text-2xl font-semibold text-slate-900">New Body Composition Scan</h1>
         <p className="mt-1 text-sm text-slate-600">Patient ID: {patientId}</p>
         <p className="mt-1 text-sm text-slate-700">
@@ -205,14 +325,25 @@ export default function ScanEntryForm({ patientId, patient, onSubmitAction }: Sc
       </div>
 
       {sections.map((section) => (
-        <section key={section.title} className="rounded-lg border border-slate-200 bg-white p-6">
-          <div className="mb-4">
+        <section key={section.title} className="rounded-xl border border-slate-200 bg-white p-7">
+          <div className="mb-5">
             <h2 className="text-lg font-semibold text-slate-900">{section.title}</h2>
             <p className="mt-1 text-sm text-slate-600">{section.description}</p>
           </div>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className={getSectionGridClass(section.title)}>
             {section.fields.map((field) => (
-              <MetricInput key={field.id} field={field} />
+              <MetricInputField
+                key={field.id}
+                field={field}
+                value={field.id === "weight_kg" ? weightKg : field.id === "bmi" ? bmiValue : undefined}
+                onChange={field.id === "weight_kg" ? setWeightKg : undefined}
+                readOnly={field.id === "bmi" && canAutoCalculateBmi}
+                helperText={
+                  field.id === "bmi" && canAutoCalculateBmi
+                    ? "Auto-calculated from weight and height using BMI = kg/m^2."
+                    : undefined
+                }
+              />
             ))}
           </div>
         </section>
@@ -222,7 +353,7 @@ export default function ScanEntryForm({ patientId, patient, onSubmitAction }: Sc
         <p className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700">{error}</p>
       ) : null}
 
-      <div className="sticky bottom-0 rounded-lg border border-slate-200 bg-white p-4">
+      <div className="sticky bottom-0 rounded-xl border border-slate-200 bg-white p-4">
         <button
           type="submit"
           disabled={isPending}

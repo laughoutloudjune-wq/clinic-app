@@ -40,6 +40,13 @@ create table if not exists public.scans (
   total_body_water_l double precision,
   protein_kg double precision,
   minerals_kg double precision,
+  waist_circumference_cm double precision,
+  hip_circumference_cm double precision,
+  daily_activity_limitation text check (daily_activity_limitation in ('None', 'Mild', 'Moderate', 'Severe')),
+  breathlessness_symptom boolean,
+  joint_pain_mobility_limitation boolean,
+  organ_dysfunction_signs boolean,
+  obesity_related_dysfunction boolean,
   report_note text,
 
   created_at timestamptz not null default now()
@@ -105,3 +112,19 @@ create policy "authenticated_delete_scans"
 -- Migration helper (run for existing databases created before report_note was added):
 alter table public.scans
   add column if not exists report_note text;
+
+alter table public.scans
+  add column if not exists waist_circumference_cm double precision,
+  add column if not exists hip_circumference_cm double precision,
+  add column if not exists daily_activity_limitation text,
+  add column if not exists breathlessness_symptom boolean,
+  add column if not exists joint_pain_mobility_limitation boolean,
+  add column if not exists organ_dysfunction_signs boolean,
+  add column if not exists obesity_related_dysfunction boolean;
+
+alter table public.scans
+  drop constraint if exists scans_daily_activity_limitation_check;
+
+alter table public.scans
+  add constraint scans_daily_activity_limitation_check
+  check (daily_activity_limitation in ('None', 'Mild', 'Moderate', 'Severe'));

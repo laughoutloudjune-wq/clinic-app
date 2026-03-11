@@ -43,6 +43,13 @@ export interface Scan {
   total_body_water_l: number | null;
   protein_kg: number | null;
   minerals_kg: number | null;
+  waist_circumference_cm: number | null;
+  hip_circumference_cm: number | null;
+  daily_activity_limitation: "None" | "Mild" | "Moderate" | "Severe" | null;
+  breathlessness_symptom: boolean | null;
+  joint_pain_mobility_limitation: boolean | null;
+  organ_dysfunction_signs: boolean | null;
+  obesity_related_dysfunction: boolean | null;
   report_note: string | null;
   created_at: string;
 }
@@ -70,6 +77,13 @@ export interface ScanInsert {
   total_body_water_l?: number | null;
   protein_kg?: number | null;
   minerals_kg?: number | null;
+  waist_circumference_cm?: number | null;
+  hip_circumference_cm?: number | null;
+  daily_activity_limitation?: "None" | "Mild" | "Moderate" | "Severe" | null;
+  breathlessness_symptom?: boolean | null;
+  joint_pain_mobility_limitation?: boolean | null;
+  organ_dysfunction_signs?: boolean | null;
+  obesity_related_dysfunction?: boolean | null;
   report_note?: string | null;
   created_at?: string;
 }
