@@ -313,6 +313,9 @@ export default function ScanEntryForm({ patientId, patient, onSubmitAction }: Sc
     return "grid grid-cols-1 gap-5 md:grid-cols-2";
   };
 
+  const isFutureOptionalSection = (sectionTitle: string) =>
+    sectionTitle === "Clinical Screening (No Lab)" || sectionTitle === "Optional Clinical Metrics";
+
   return (
     <form action={submitHandler} className="mx-auto max-w-6xl space-y-7 p-4 md:p-8">
       <div className="rounded-xl border border-slate-200 bg-white p-7">
@@ -324,12 +327,8 @@ export default function ScanEntryForm({ patientId, patient, onSubmitAction }: Sc
         </p>
       </div>
 
-      {sections.map((section) => (
-        <section key={section.title} className="rounded-xl border border-slate-200 bg-white p-7">
-          <div className="mb-5">
-            <h2 className="text-lg font-semibold text-slate-900">{section.title}</h2>
-            <p className="mt-1 text-sm text-slate-600">{section.description}</p>
-          </div>
+      {sections.map((section) => {
+        const fieldsContent = (
           <div className={getSectionGridClass(section.title)}>
             {section.fields.map((field) => (
               <MetricInputField
@@ -346,8 +345,35 @@ export default function ScanEntryForm({ patientId, patient, onSubmitAction }: Sc
               />
             ))}
           </div>
-        </section>
-      ))}
+        );
+
+        if (isFutureOptionalSection(section.title)) {
+          return (
+            <details key={section.title} className="rounded-xl border border-slate-200 bg-white p-7">
+              <summary className="cursor-pointer list-none">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h2 className="text-lg font-semibold text-slate-900">{section.title}</h2>
+                  <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800">
+                    Optional Data • For Future Use
+                  </span>
+                </div>
+                <p className="mt-1 text-sm text-slate-600">{section.description}</p>
+              </summary>
+              <div className="mt-5">{fieldsContent}</div>
+            </details>
+          );
+        }
+
+        return (
+          <section key={section.title} className="rounded-xl border border-slate-200 bg-white p-7">
+            <div className="mb-5">
+              <h2 className="text-lg font-semibold text-slate-900">{section.title}</h2>
+              <p className="mt-1 text-sm text-slate-600">{section.description}</p>
+            </div>
+            {fieldsContent}
+          </section>
+        );
+      })}
 
       {error ? (
         <p className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700">{error}</p>
