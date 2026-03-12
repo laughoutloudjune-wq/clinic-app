@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { revalidatePath } from "next/cache";
 import { notFound } from "next/navigation";
 
@@ -40,7 +41,6 @@ function ScaleMeter({
   unit,
   min,
   max,
-  tone = "slate",
   compact = false,
 }: {
   label: string;
@@ -48,21 +48,12 @@ function ScaleMeter({
   unit: string;
   min: number;
   max: number;
-  tone?: "slate" | "rose" | "emerald" | "amber";
   compact?: boolean;
 }) {
   const span = Math.max(0.1, max - min);
   const extendedMin = min - span * 0.6;
   const extendedMax = max + span * 0.6;
   const left = clampPercent(value, extendedMin, extendedMax);
-  const toneClass =
-    tone === "rose"
-      ? "bg-rose-500"
-      : tone === "emerald"
-        ? "bg-emerald-500"
-        : tone === "amber"
-          ? "bg-amber-500"
-          : "bg-slate-700";
 
   return (
     <div className={`rounded-lg border border-slate-300 ${compact ? "p-2" : "p-2"}`}>
@@ -78,7 +69,7 @@ function ScaleMeter({
         <div className="absolute inset-y-0 left-[70%] w-[30%] bg-rose-100" />
         <div className="absolute inset-y-0 left-[30%] w-px bg-slate-300" />
         <div className="absolute inset-y-0 left-[70%] w-px bg-slate-300" />
-        <div className={`absolute top-0 h-3 w-1 rounded ${toneClass}`} style={{ left: `${left}%` }} />
+        <div className="absolute top-[-1px] h-4 w-2 rounded bg-black" style={{ left: `${left}%` }} />
       </div>
       <div className={`mt-1 flex items-center justify-between gap-2 ${compact ? "text-xs" : "text-[10px]"} text-slate-500`}>
         <span>Low</span>
@@ -168,8 +159,21 @@ export default async function ReportPage({ params, searchParams }: PageProps) {
 
       <article className={wrapperClass}>
         <header className="overflow-hidden rounded-xl border border-slate-300">
-          <div className="flex items-end justify-between border-b border-slate-300 bg-gradient-to-r from-teal-700 to-cyan-700 px-4 py-3 text-white">
-            <h1 className={isPdfMode ? "text-2xl font-bold leading-none" : "text-2xl font-bold leading-none"}>Erika Clinic</h1>
+          <div
+            className="flex items-end justify-between border-b border-slate-300 px-4 py-3 text-white"
+            style={{ background: "linear-gradient(90deg, #5f6d43 0%, #889866 52%, #a6b083 100%)" }}
+          >
+            <div className="flex items-center gap-3">
+              <Image
+                src="/erika-clinic-logo.png"
+                alt="Erika Clinic Logo"
+                width={isPdfMode ? 58 : 64}
+                height={isPdfMode ? 58 : 64}
+                className="h-14 w-14 rounded-full bg-white/95 object-contain p-1"
+                priority
+              />
+              <h1 className={isPdfMode ? "text-2xl font-bold leading-none" : "text-2xl font-bold leading-none"}>Erika Clinic</h1>
+            </div>
             <div className="text-right">
               <p className={isPdfMode ? "text-base font-semibold leading-none" : "text-lg font-semibold leading-none"}>
                 Body Composition Dashboard Report
@@ -221,18 +225,16 @@ export default async function ReportPage({ params, searchParams }: PageProps) {
               unit="kg"
               min={Number(normalWeightMin.toFixed(1))}
               max={Number(normalWeightMax.toFixed(1))}
-              tone="slate"
               compact={isPdfMode}
             />
-            <ScaleMeter label="BMI" value={scan.bmi} unit="" min={18.5} max={24.9} tone="amber" compact={isPdfMode} />
-            <ScaleMeter label="Visceral Fat" value={scan.visceral_fat_level} unit="" min={1} max={9} tone="rose" compact={isPdfMode} />
+            <ScaleMeter label="BMI" value={scan.bmi} unit="" min={18.5} max={24.9} compact={isPdfMode} />
+            <ScaleMeter label="Visceral Fat" value={scan.visceral_fat_level} unit="" min={1} max={9} compact={isPdfMode} />
             <ScaleMeter
               label="Body Fat %"
               value={scan.body_fat_percent}
               unit="%"
               min={bodyFatRange.min}
               max={bodyFatRange.max}
-              tone="rose"
               compact={isPdfMode}
             />
           </section>
