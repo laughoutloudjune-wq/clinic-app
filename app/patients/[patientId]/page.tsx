@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import PatientHistoryChart from "@/components/charts/patient-history-chart";
+import DeletePatientButton from "@/components/patients/delete-patient-button";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Patient, Scan } from "@/types/database";
 
@@ -33,6 +34,23 @@ export default async function PatientDetailPage({ params }: PageProps) {
   const typedPatient = patient as Patient;
   const scans = (scansData ?? []) as Scan[];
 
+  async function deletePatientAction(formData: FormData) {
+    "use server";
+
+    const patientIdValue = formData.get("patient_id");
+    if (typeof patientIdValue !== "string" || patientIdValue !== typedPatient.id) {
+      throw new Error("Invalid patient id.");
+    }
+
+    const supabaseAction = createSupabaseServerClient();
+    const { error: deleteError } = await supabaseAction.from("patients").delete().eq("id", typedPatient.id);
+    if (deleteError) {
+      throw new Error(deleteError.message);
+    }
+
+    redirect("/");
+  }
+
   return (
     <main className="min-h-screen bg-slate-50 p-6 md:p-10">
       <div className="mx-auto max-w-6xl space-y-6">
@@ -44,7 +62,7 @@ export default async function PatientDetailPage({ params }: PageProps) {
                 HN: {typedPatient.hn_number} | Age: {typedPatient.age} | Sex: {typedPatient.sex} | Height: {typedPatient.height_cm} cm
               </p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Link href="/" className="rounded border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">
                 Dashboard
               </Link>
@@ -54,6 +72,11 @@ export default async function PatientDetailPage({ params }: PageProps) {
               >
                 Add New Scan
               </Link>
+              <DeletePatientButton
+                patientId={typedPatient.id}
+                patientName={typedPatient.name}
+                onDeleteAction={deletePatientAction}
+              />
             </div>
           </div>
         </section>
