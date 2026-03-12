@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 
-import type { Patient } from "@/types/database";
+import type { Patient, Scan } from "@/types/database";
 
 type InputType = "number" | "datetime-local" | "select";
 
@@ -31,6 +31,10 @@ interface ScanEntryFormProps {
   patientId: string;
   patient: Pick<Patient, "hn_number" | "name" | "age" | "sex" | "height_cm">;
   onSubmitAction: (formData: FormData) => Promise<void>;
+  initialValues?: Partial<Scan>;
+  formTitle?: string;
+  submitLabel?: string;
+  hiddenFields?: Record<string, string>;
 }
 
 const sections: FieldSection[] = [
@@ -225,12 +229,13 @@ const sections: FieldSection[] = [
 interface MetricInputFieldProps {
   field: FieldConfig;
   value?: string;
+  defaultValue?: string;
   onChange?: (value: string) => void;
   readOnly?: boolean;
   helperText?: string;
 }
 
-function MetricInputField({ field, value, onChange, readOnly = false, helperText }: MetricInputFieldProps) {
+function MetricInputField({ field, value, defaultValue, onChange, readOnly = false, helperText }: MetricInputFieldProps) {
   if (field.type === "select" && field.options) {
     return (
       <div className="space-y-2">
@@ -241,8 +246,10 @@ function MetricInputField({ field, value, onChange, readOnly = false, helperText
           id={field.id}
           name={field.id}
           required={field.required ?? false}
+          value={value}
+          defaultValue={defaultValue ?? field.options[0]?.value ?? ""}
+          onChange={onChange ? (event) => onChange(event.currentTarget.value) : undefined}
           className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none ring-slate-300 transition focus:ring-2"
-          defaultValue={field.options[0]?.value ?? ""}
         >
           {field.options.map((option) => (
             <option key={`${field.id}-${option.value}`} value={option.value}>
@@ -268,6 +275,7 @@ function MetricInputField({ field, value, onChange, readOnly = false, helperText
         step={field.step}
         min={field.min}
         value={value}
+        defaultValue={defaultValue}
         onChange={onChange ? (event) => onChange(event.currentTarget.value) : undefined}
         readOnly={readOnly}
         className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none ring-slate-300 transition focus:ring-2"
@@ -277,10 +285,33 @@ function MetricInputField({ field, value, onChange, readOnly = false, helperText
   );
 }
 
-export default function ScanEntryForm({ patientId, patient, onSubmitAction }: ScanEntryFormProps) {
+function toDateTimeLocalInput(value: string | undefined): string {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const adjusted = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return adjusted.toISOString().slice(0, 16);
+}
+
+function toFieldValue(value: unknown, fieldId: string): string {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "boolean") return value ? "true" : "false";
+  if (fieldId === "scan_date" && typeof value === "string") return toDateTimeLocalInput(value);
+  return String(value);
+}
+
+export default function ScanEntryForm({
+  patientId,
+  patient,
+  onSubmitAction,
+  initialValues,
+  formTitle = "New Body Composition Scan",
+  submitLabel = "Save Scan",
+  hiddenFields,
+}: ScanEntryFormProps) {
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-  const [weightKg, setWeightKg] = useState("");
+  const [weightKg, setWeightKg] = useState(() => toFieldValue(initialValues?.weight_kg, "weight_kg"));
 
   const heightM = patient.height_cm > 0 ? patient.height_cm / 100 : 0;
   const canAutoCalculateBmi = heightM > 0;
@@ -288,7 +319,7 @@ export default function ScanEntryForm({ patientId, patient, onSubmitAction }: Sc
   const bmiValue =
     canAutoCalculateBmi && Number.isFinite(parsedWeight) && parsedWeight > 0
       ? (parsedWeight / (heightM * heightM)).toFixed(2)
-      : "";
+      : toFieldValue(initialValues?.bmi, "bmi");
 
   const submitHandler = (formData: FormData) => {
     setError(null);
@@ -318,8 +349,13 @@ export default function ScanEntryForm({ patientId, patient, onSubmitAction }: Sc
 
   return (
     <form action={submitHandler} className="mx-auto max-w-6xl space-y-7 p-4 md:p-8">
+      {hiddenFields
+        ? Object.entries(hiddenFields).map(([name, fieldValue]) => (
+            <input key={name} type="hidden" name={name} value={fieldValue} />
+          ))
+        : null}
       <div className="rounded-xl border border-slate-200 bg-white p-7">
-        <h1 className="text-2xl font-semibold text-slate-900">New Body Composition Scan</h1>
+        <h1 className="text-2xl font-semibold text-slate-900">{formTitle}</h1>
         <p className="mt-1 text-sm text-slate-600">Patient ID: {patientId}</p>
         <p className="mt-1 text-sm text-slate-700">
           {patient.name} | HN: {patient.hn_number} | Age: {patient.age} | Sex: {patient.sex} | Height:{" "}
@@ -337,6 +373,7 @@ export default function ScanEntryForm({ patientId, patient, onSubmitAction }: Sc
                 value={field.id === "weight_kg" ? weightKg : field.id === "bmi" ? bmiValue : undefined}
                 onChange={field.id === "weight_kg" ? setWeightKg : undefined}
                 readOnly={field.id === "bmi" && canAutoCalculateBmi}
+                defaultValue={field.id === "weight_kg" || field.id === "bmi" ? undefined : toFieldValue(initialValues?.[field.id as keyof Scan], field.id)}
                 helperText={
                   field.id === "bmi" && canAutoCalculateBmi
                     ? "Auto-calculated from weight and height using BMI = kg/m^2."
@@ -385,7 +422,7 @@ export default function ScanEntryForm({ patientId, patient, onSubmitAction }: Sc
           disabled={isPending}
           className="w-full rounded-md border border-slate-900 bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 md:w-auto"
         >
-          {isPending ? "Saving..." : "Save Scan"}
+          {isPending ? "Saving..." : submitLabel}
         </button>
       </div>
     </form>

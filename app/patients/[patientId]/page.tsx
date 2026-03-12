@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 
 import PatientHistoryChart from "@/components/charts/patient-history-chart";
 import DeletePatientButton from "@/components/patients/delete-patient-button";
+import DeleteScanButton from "@/components/scans/delete-scan-button";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Patient, Scan } from "@/types/database";
 
@@ -49,6 +50,26 @@ export default async function PatientDetailPage({ params }: PageProps) {
     }
 
     redirect("/");
+  }
+
+  async function deleteScanAction(formData: FormData) {
+    "use server";
+
+    const scanIdValue = formData.get("scan_id");
+    if (typeof scanIdValue !== "string") {
+      throw new Error("Invalid scan id.");
+    }
+
+    const supabaseAction = createSupabaseServerClient();
+    const { error: deleteError } = await supabaseAction
+      .from("scans")
+      .delete()
+      .eq("id", scanIdValue)
+      .eq("patient_id", typedPatient.id);
+
+    if (deleteError) {
+      throw new Error(deleteError.message);
+    }
   }
 
   return (
@@ -124,12 +145,19 @@ export default async function PatientDetailPage({ params }: PageProps) {
                       <Link href={`/report/${scan.id}`} className="rounded border border-slate-300 px-3 py-1.5 text-xs font-medium hover:bg-slate-100">
                         View Report
                       </Link>
+                      <Link
+                        href={`/patients/${typedPatient.id}/scans/${scan.id}/edit`}
+                        className="rounded border border-slate-300 px-3 py-1.5 text-xs font-medium hover:bg-slate-100"
+                      >
+                        Edit Scan
+                      </Link>
                       <a
                         href={`/api/generate-pdf?scanId=${scan.id}`}
                         className="rounded border border-slate-900 bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800"
                       >
                         Download PDF
                       </a>
+                      <DeleteScanButton scanId={scan.id} onDeleteAction={deleteScanAction} />
                     </div>
                   </td>
                 </tr>
