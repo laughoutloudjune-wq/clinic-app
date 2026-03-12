@@ -2,6 +2,7 @@ import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { notFound } from "next/navigation";
 
+import AutoPrint from "@/components/report/auto-print";
 import ReportActions from "@/components/report/report-actions";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Patient, Scan } from "@/types/database";
@@ -12,6 +13,7 @@ type PageProps = {
   }>;
   searchParams: Promise<{
     pdf?: string;
+    autoprint?: string;
   }>;
 };
 
@@ -53,7 +55,6 @@ function ScaleMeter({
   const extendedMin = min - span * 0.6;
   const extendedMax = max + span * 0.6;
   const left = clampPercent(value, extendedMin, extendedMax);
-  const status = value < min ? "Low" : value > max ? "High" : "Normal";
   const toneClass =
     tone === "rose"
       ? "bg-rose-500"
@@ -62,15 +63,9 @@ function ScaleMeter({
         : tone === "amber"
           ? "bg-amber-500"
           : "bg-slate-700";
-  const statusClass =
-    status === "Low"
-      ? "border-sky-300 bg-sky-50 text-sky-700"
-      : status === "High"
-        ? "border-rose-300 bg-rose-50 text-rose-700"
-        : "border-emerald-300 bg-emerald-50 text-emerald-700";
 
   return (
-    <div className={`rounded-lg border border-slate-300 ${compact ? "p-2.5" : "p-2"}`}>
+    <div className={`rounded-lg border border-slate-300 ${compact ? "p-2" : "p-2"}`}>
       <div className="mb-1 flex items-center justify-between">
         <p className={`${compact ? "text-sm" : "text-xs"} font-semibold text-slate-700`}>{label}</p>
         <p className={`${compact ? "text-sm" : "text-xs"} font-medium text-slate-700`}>
@@ -90,17 +85,15 @@ function ScaleMeter({
         <span>Normal: {fmt(min, 1)}-{fmt(max, 1)} {unit}</span>
         <span>High</span>
       </div>
-      <div className="mt-1 flex justify-end">
-        <span className={`rounded border px-1.5 py-0.5 ${compact ? "text-xs" : "text-[10px]"} font-medium ${statusClass}`}>{status}</span>
-      </div>
     </div>
   );
 }
 
 export default async function ReportPage({ params, searchParams }: PageProps) {
   const { scanId } = await params;
-  const { pdf } = await searchParams;
+  const { pdf, autoprint } = await searchParams;
   const isPdfMode = pdf === "1";
+  const shouldAutoPrint = isPdfMode && autoprint === "1";
 
   if (!uuidPattern.test(scanId)) notFound();
 
@@ -133,7 +126,7 @@ export default async function ReportPage({ params, searchParams }: PageProps) {
     .order("scan_date", { ascending: true })
     .limit(8);
 
-  const historyRows = (historyData ?? []).slice(isPdfMode ? -4 : -8);
+  const historyRows = (historyData ?? []).slice(isPdfMode ? -3 : -8);
 
   async function saveReportNoteAction(formData: FormData) {
     "use server";
@@ -157,12 +150,13 @@ export default async function ReportPage({ params, searchParams }: PageProps) {
 
   const shellClass = isPdfMode ? "min-h-screen bg-white p-0" : "min-h-screen bg-slate-100 p-4 md:p-6";
   const wrapperClass = isPdfMode
-    ? "a4-page mx-auto bg-white p-3 text-slate-900"
+    ? "a4-page pdf-compact mx-auto bg-white p-2 text-slate-900"
     : "mx-auto max-w-7xl rounded-2xl border border-slate-200 bg-white p-5 text-slate-900 shadow-xl";
-  const scaleGridClass = isPdfMode ? "grid grid-cols-2 gap-2.5" : "grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4";
+  const scaleGridClass = "grid grid-cols-1 gap-2";
 
   return (
     <main className={shellClass}>
+      {shouldAutoPrint ? <AutoPrint /> : null}
       {!isPdfMode ? (
         <div className="mx-auto mb-4 flex max-w-7xl items-center justify-between print:hidden">
           <Link href={`/patients/${scan.patient_id}`} className="text-sm text-slate-600 hover:text-slate-900">
@@ -175,9 +169,11 @@ export default async function ReportPage({ params, searchParams }: PageProps) {
       <article className={wrapperClass}>
         <header className="overflow-hidden rounded-xl border border-slate-300">
           <div className="flex items-end justify-between border-b border-slate-300 bg-gradient-to-r from-teal-700 to-cyan-700 px-4 py-3 text-white">
-            <h1 className={isPdfMode ? "text-3xl font-bold leading-none" : "text-2xl font-bold leading-none"}>Erika Clinic</h1>
+            <h1 className={isPdfMode ? "text-2xl font-bold leading-none" : "text-2xl font-bold leading-none"}>Erika Clinic</h1>
             <div className="text-right">
-              <p className="text-lg font-semibold leading-none">Body Composition Dashboard Report</p>
+              <p className={isPdfMode ? "text-base font-semibold leading-none" : "text-lg font-semibold leading-none"}>
+                Body Composition Dashboard Report
+              </p>
               <p className="text-xs text-cyan-100">erika-clinic.local</p>
             </div>
           </div>
@@ -217,7 +213,7 @@ export default async function ReportPage({ params, searchParams }: PageProps) {
           </div>
         </header>
 
-        <div className={isPdfMode ? "mt-2 space-y-2.5 text-sm" : "mt-3 space-y-3 text-sm"}>
+        <div className={isPdfMode ? "mt-2 space-y-2 text-sm" : "mt-3 space-y-3 text-sm"}>
           <section className={scaleGridClass}>
             <ScaleMeter
               label="Weight"
@@ -241,7 +237,7 @@ export default async function ReportPage({ params, searchParams }: PageProps) {
             />
           </section>
 
-          <section className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          <section className={isPdfMode ? "grid grid-cols-2 gap-2" : "grid grid-cols-1 gap-3 lg:grid-cols-2"}>
             <div className="overflow-hidden rounded-lg border border-slate-300">
               <h2 className="bg-slate-100 px-3 py-2 text-base font-semibold text-slate-700">Skeletal Muscle Breakdown</h2>
               <table className="w-full">
@@ -269,7 +265,7 @@ export default async function ReportPage({ params, searchParams }: PageProps) {
             </div>
           </section>
 
-          <section className="grid grid-cols-1 gap-3 lg:grid-cols-[1.2fr_0.8fr]">
+          <section className={isPdfMode ? "grid grid-cols-2 gap-2" : "grid grid-cols-1 gap-3 lg:grid-cols-[1.2fr_0.8fr]"}>
             <div className="overflow-hidden rounded-lg border border-slate-300">
               <h2 className="bg-slate-100 px-3 py-2 text-base font-semibold text-slate-700">Body Composition History</h2>
               <table className="w-full">
@@ -298,8 +294,8 @@ export default async function ReportPage({ params, searchParams }: PageProps) {
               </table>
             </div>
 
-            <div className="space-y-3">
-              <section className="rounded-lg border border-slate-300 p-3">
+            <div className={isPdfMode ? "grid grid-cols-1 gap-2" : "space-y-3"}>
+              <section className={isPdfMode ? "rounded-lg border border-slate-300 p-2" : "rounded-lg border border-slate-300 p-3"}>
                 <h3 className="text-base font-semibold text-slate-700">Additional Data</h3>
                 <div className="mt-2 grid grid-cols-2 gap-y-1">
                   <p className="text-slate-600">Resting Metabolism (kcal)</p><p className="text-right font-medium">{scan.resting_metabolism_kcal}</p>
@@ -307,10 +303,10 @@ export default async function ReportPage({ params, searchParams }: PageProps) {
                 </div>
               </section>
 
-              <section className="rounded-lg border border-slate-300 p-3">
+              <section className={isPdfMode ? "rounded-lg border border-slate-300 p-2" : "rounded-lg border border-slate-300 p-3"}>
                 <h3 className="text-base font-semibold text-slate-700">Notes</h3>
                 {isPdfMode ? (
-                  <div className="mt-1 min-h-20 max-h-24 overflow-hidden rounded-md border border-slate-300 bg-slate-50 px-2 py-1 whitespace-pre-wrap">
+                  <div className="mt-1 min-h-16 max-h-16 overflow-hidden rounded-md border border-slate-300 bg-slate-50 px-2 py-1 whitespace-pre-wrap">
                     {scan.report_note?.trim() ? scan.report_note : "No note."}
                   </div>
                 ) : (

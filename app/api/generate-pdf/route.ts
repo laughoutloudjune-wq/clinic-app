@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import puppeteer from "puppeteer";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -16,12 +16,40 @@ export async function GET(request: NextRequest) {
     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : request.nextUrl.origin);
   const reportUrl = `${baseUrl}/report/${scanId}?pdf=1`;
 
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: ["--no-sandbox", "--disable-setuid-sandbox"],
-  });
-
+  let browser: {
+    close: () => Promise<void>;
+    newPage: () => Promise<{
+      goto: (url: string, options: { waitUntil: "networkidle0"; timeout: number }) => Promise<unknown>;
+      emulateMediaType: (type: "print") => Promise<unknown>;
+      pdf: (options: {
+        format: "A4";
+        printBackground: boolean;
+        margin: { top: string; right: string; bottom: string; left: string };
+      }) => Promise<Uint8Array>;
+    }>;
+  } | null = null;
   try {
+    if (process.env.VERCEL) {
+      const chromium = (await import("@sparticuz/chromium")).default;
+      const puppeteer = await import("puppeteer-core");
+
+      browser = await puppeteer.launch({
+        args: chromium.args,
+        executablePath: await chromium.executablePath(),
+        headless: true,
+      });
+    } else {
+      const puppeteer = await import("puppeteer");
+      browser = await puppeteer.launch({
+        headless: true,
+        args: ["--no-sandbox", "--disable-setuid-sandbox"],
+      });
+    }
+
+    if (!browser) {
+      throw new Error("Browser launch failed.");
+    }
+
     const page = await browser.newPage();
     await page.goto(reportUrl, { waitUntil: "networkidle0", timeout: 90_000 });
     await page.emulateMediaType("print");
@@ -44,9 +72,12 @@ export async function GET(request: NextRequest) {
         "Content-Disposition": `attachment; filename="body-composition-${scanId}.pdf"`,
       },
     });
-  } catch {
-    return NextResponse.json({ error: "Failed to generate PDF." }, { status: 500 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to generate PDF.";
+    return NextResponse.json({ error: message }, { status: 500 });
   } finally {
-    await browser.close();
+    if (browser) {
+      await browser.close();
+    }
   }
 }

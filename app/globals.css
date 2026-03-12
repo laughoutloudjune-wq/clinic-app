@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Google+Sans+Text:wght@400;500;700&display=swap");
 @import "tailwindcss";
 
 :root {
@@ -19,8 +20,33 @@ body {
 }
 
 .a4-page {
-  width: 210mm;
-  min-height: 297mm;
+  width: 190mm;
+  min-height: 277mm;
+}
+
+.pdf-compact table th,
+.pdf-compact table td {
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+
+.pdf-compact h2,
+.pdf-compact h3 {
+  font-size: 0.9rem;
+}
+
+.pdf-compact {
+  font-family: "Google Sans Text", "Google Sans", "Product Sans", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  font-size: 12px;
+  line-height: 1.28;
+  height: 277mm;
+  overflow: hidden;
+}
+
+.pdf-compact section,
+.pdf-compact header {
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 
 @page {

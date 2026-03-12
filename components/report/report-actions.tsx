@@ -9,6 +9,7 @@ type ReportActionsProps = {
 export default function ReportActions({ scanId }: ReportActionsProps) {
   const [isDownloading, setIsDownloading] = useState(false);
   const reportPdfViewUrl = useMemo(() => `/report/${scanId}?pdf=1`, [scanId]);
+  const reportPdfPrintUrl = useMemo(() => `/report/${scanId}?pdf=1&autoprint=1`, [scanId]);
   const pdfApiUrl = useMemo(() => `/api/generate-pdf?scanId=${scanId}`, [scanId]);
 
   async function handleDownloadPdf() {
@@ -46,7 +47,7 @@ export default function ReportActions({ scanId }: ReportActionsProps) {
       </a>
       <button
         type="button"
-        onClick={() => window.print()}
+        onClick={() => window.open(reportPdfPrintUrl, "_blank", "noopener,noreferrer")}
         className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
       >
         Print

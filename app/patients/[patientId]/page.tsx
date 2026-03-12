@@ -114,7 +114,7 @@ export default async function PatientDetailPage({ params }: PageProps) {
           )}
         </section>
 
-        <section className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+        <section className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
           <table className="min-w-full text-left text-sm">
             <thead className="bg-slate-100 text-slate-700">
               <tr>
