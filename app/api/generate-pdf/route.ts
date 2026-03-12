@@ -11,15 +11,18 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "scanId must be a valid UUID." }, { status: 400 });
   }
 
-  const baseUrl =
-    process.env.NEXT_PUBLIC_APP_URL ??
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : request.nextUrl.origin);
+  const configuredAppUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
+  const baseUrl = configuredAppUrl && configuredAppUrl.length > 0 ? configuredAppUrl : request.nextUrl.origin;
   const reportUrl = `${baseUrl}/report/${scanId}?pdf=1`;
+  const cookieHeader = request.headers.get("cookie");
+  const protectionBypass = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
 
   let browser: {
     close: () => Promise<void>;
     newPage: () => Promise<{
       goto: (url: string, options: { waitUntil: "networkidle0"; timeout: number }) => Promise<unknown>;
+      setExtraHTTPHeaders: (headers: Record<string, string>) => Promise<unknown>;
+      url: () => string;
       emulateMediaType: (type: "print") => Promise<unknown>;
       pdf: (options: {
         format: "A4";
@@ -51,7 +54,17 @@ export async function GET(request: NextRequest) {
     }
 
     const page = await browser.newPage();
+    const extraHeaders: Record<string, string> = {};
+    if (cookieHeader) extraHeaders.cookie = cookieHeader;
+    if (protectionBypass) extraHeaders["x-vercel-protection-bypass"] = protectionBypass;
+    if (Object.keys(extraHeaders).length > 0) {
+      await page.setExtraHTTPHeaders(extraHeaders);
+    }
     await page.goto(reportUrl, { waitUntil: "networkidle0", timeout: 90_000 });
+    const currentUrl = page.url();
+    if (currentUrl.includes("vercel.com/login") || currentUrl.includes("auth")) {
+      throw new Error("PDF generator reached an authentication page instead of the report.");
+    }
     await page.emulateMediaType("print");
 
     const pdf = await page.pdf({
