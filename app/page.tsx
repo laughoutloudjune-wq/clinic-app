@@ -65,8 +65,8 @@ export default async function Home({ searchParams }: HomeProps) {
           </form>
         </section>
 
-        <section className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-          <table className="min-w-full text-left text-sm">
+        <section className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+          <table className="min-w-[760px] text-left text-sm md:min-w-full">
             <thead className="bg-slate-100 text-slate-700">
               <tr>
                 <th className="px-4 py-3 font-medium">HN Number</th>
