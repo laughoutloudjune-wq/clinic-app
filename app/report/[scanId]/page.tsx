@@ -230,6 +230,14 @@ export default async function ReportPage({ params, searchParams }: PageProps) {
             <ScaleMeter label="BMI" value={scan.bmi} unit="" min={18.5} max={24.9} compact={isPdfMode} />
             <ScaleMeter label="Visceral Fat" value={scan.visceral_fat_level} unit="" min={1} max={9} compact={isPdfMode} />
             <ScaleMeter
+              label="Skeletal Muscle %"
+              value={scan.skeletal_muscle_total_percent}
+              unit="%"
+              min={30}
+              max={45}
+              compact={isPdfMode}
+            />
+            <ScaleMeter
               label="Body Fat %"
               value={scan.body_fat_percent}
               unit="%"

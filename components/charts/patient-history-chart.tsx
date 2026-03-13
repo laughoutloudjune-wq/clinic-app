@@ -5,9 +5,10 @@ import { CartesianGrid, LabelList, Line, LineChart, ResponsiveContainer, XAxis, 
 type HistoryPoint = {
   scan_date: string;
   weight_kg: number;
-  body_fat_kg?: number;
+  bmi: number;
+  visceral_fat_level: number;
   body_fat_percent: number;
-  skeletal_muscle_total_kg: number;
+  skeletal_muscle_total_percent: number;
 };
 
 interface PatientHistoryChartProps {
@@ -33,9 +34,10 @@ export default function PatientHistoryChart({ data }: PatientHistoryChartProps) 
   const minChartWidth = Math.max(560, data.length * 90);
   const metrics: MetricConfig[] = [
     { key: "weight_kg", label: "Weight", unit: "kg", color: "#111827", decimals: 1 },
-    { key: "skeletal_muscle_total_kg", label: "Skeletal Muscle Mass", unit: "kg", color: "#374151", decimals: 1 },
-    { key: "body_fat_kg", label: "Body Fat Mass", unit: "kg", color: "#4b5563", decimals: 1 },
+    { key: "bmi", label: "BMI", unit: "", color: "#1f2937", decimals: 1 },
+    { key: "visceral_fat_level", label: "Visceral Fat", unit: "level", color: "#374151", decimals: 0 },
     { key: "body_fat_percent", label: "Percent Body Fat", unit: "%", color: "#6b7280", decimals: 1 },
+    { key: "skeletal_muscle_total_percent", label: "Skeletal Muscle", unit: "%", color: "#4b5563", decimals: 1 },
   ];
 
   const labelFormatter = (value: unknown, decimals: number) => {
@@ -53,8 +55,8 @@ export default function PatientHistoryChart({ data }: PatientHistoryChartProps) 
                 <p className="text-sm font-semibold text-slate-700">{metric.label}</p>
                 <p className="text-xs font-semibold text-slate-600">({metric.unit})</p>
               </div>
-              <div className="h-22 bg-white px-2 py-1">
-                <ResponsiveContainer width="100%" height="100%">
+              <div className="h-[88px] min-h-[88px] min-w-0 bg-white px-2 py-1">
+                <ResponsiveContainer width="100%" height="100%" minHeight={88}>
                   <LineChart data={data} margin={{ top: 14, right: 8, left: 8, bottom: index === metrics.length - 1 ? 14 : 6 }}>
                     <CartesianGrid vertical stroke="#d1d5db" horizontal={false} />
                     <XAxis
